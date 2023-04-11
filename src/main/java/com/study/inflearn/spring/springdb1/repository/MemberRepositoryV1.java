@@ -1,0 +1,131 @@
+package com.study.inflearn.spring.springdb1.repository;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.NoSuchElementException;
+
+import javax.sql.DataSource;
+
+import org.springframework.jdbc.support.JdbcUtils;
+
+import com.study.inflearn.spring.springdb1.domain.Member;
+
+import lombok.extern.slf4j.Slf4j;
+
+/*
+ *	JDBC - DataSource 사용, JdbcUtils 사용
+ */
+@Slf4j
+public class MemberRepositoryV1 {
+	
+	//커넥션을 획득하는 방법을 추상화
+	private final DataSource dataSource;
+	
+	//DataSource는 java표준이기 때문에 DriverManagerDataSource에서 HikariDataSource로 변경되어도 해당 코드를 변경하지 않아도된다.
+	public MemberRepositoryV1(DataSource dataSource) {
+		this.dataSource = dataSource;
+	}
+
+	public Member save(Member member) throws SQLException {
+		String sql = "insert into member(member_id, money) values (?, ?)";
+
+		Connection con = null;
+		PreparedStatement pstmt = null;
+
+		try {
+			con = getConnection();
+			pstmt = con.prepareStatement(sql);
+			pstmt.setString(1, member.getMemberId());
+			pstmt.setInt(2, member.getMoney());
+			pstmt.executeUpdate();
+			return member;
+
+		} catch (SQLException e) {
+			log.error("db error", e);
+			throw e;
+
+		} finally {
+			close(con, pstmt, null);
+		}
+
+	}
+
+	public Member findById(String memberId) throws SQLException {
+		String sql = "select * from member where member_id = ?";
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		try {
+			con = getConnection();
+			pstmt = con.prepareStatement(sql);
+			pstmt.setString(1, memberId);
+			rs = pstmt.executeQuery();
+			if (rs.next()) {
+				Member member = new Member();
+				member.setMemberId(rs.getString("member_id"));
+				member.setMoney(rs.getInt("money"));
+				return member;
+			} else {
+				throw new NoSuchElementException("member not found memberId=" + memberId);
+			}
+		} catch (SQLException e) {
+			log.error("db error", e);
+			throw e;
+		} finally {
+			close(con, pstmt, rs);
+		}
+	}
+
+	public void update(String memberId, int money) throws SQLException {
+		String sql = "update member set money=? where member_id=?";
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		try {
+			con = getConnection();
+			pstmt = con.prepareStatement(sql);
+			pstmt.setInt(1, money);
+			pstmt.setString(2, memberId);
+			int resultSize = pstmt.executeUpdate();
+			log.info("resultSize={}", resultSize);
+		} catch (SQLException e) {
+			log.error("db error", e);
+			throw e;
+		} finally {
+			close(con, pstmt, null);
+		}
+	}
+
+	public void delete(String memberId) throws SQLException {
+		String sql = "delete from member where member_id=?";
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		try {
+			con = getConnection();
+			pstmt = con.prepareStatement(sql);
+			pstmt.setString(1, memberId);
+			pstmt.executeUpdate();
+		} catch (SQLException e) {
+			log.error("db error", e);
+			throw e;
+		} finally {
+			close(con, pstmt, null);
+		}
+	}
+
+	private Connection getConnection() throws SQLException {
+		Connection con = dataSource.getConnection();
+		log.info("dataSource get connection={}, class={}", con, con.getClass());
+		
+		return con;
+	}
+
+	private void close(Connection con, Statement stmt, ResultSet rs) {
+		JdbcUtils.closeResultSet(rs);
+		JdbcUtils.closeStatement(stmt);
+		//히카리 프록시 컨넥션.close() 동작 -> 실제 db connection을 닫지않고 풀에 반환
+		JdbcUtils.closeConnection(con);
+	}
+}
