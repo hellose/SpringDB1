@@ -42,6 +42,7 @@ public class MemberServiceV1Test {
 //		repository.delete(MEMBER_A);
 //		repository.delete(MEMBER_B);
 //		repository.delete(MEMBER_EX);
+		
 	}
 
 	@Test
@@ -56,7 +57,7 @@ public class MemberServiceV1Test {
 		// when
 		service.accountTransfer(memberA.getMemberId(), memberB.getMemberId(), 2000);
 
-		// that
+		// then
 		Member findMemberA = repository.findById(memberA.getMemberId());
 		Member findMemberB = repository.findById(memberB.getMemberId());
 

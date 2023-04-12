@@ -12,29 +12,35 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.study.inflearn.spring.springdb1.domain.Member;
-import com.study.inflearn.spring.springdb1.repository.MemberRepositoryV2;
+import com.study.inflearn.spring.springdb1.repository.MemberRepositoryV3;
 
 /*
- * 트랜잭션 처리. but 서비스 계층이 지저분해지는 문제는 여전히 남아있음.
- * 이후의 시간부터 스프링을 사용해서 이런 문제들을 해결
+ * 트랜잭션 - 트랜잭션 매니저
  */
-public class MemberServiceV2Test {
+public class MemberServiceV3_1Test {
 
 	public static final String MEMBER_A = "memberA";
 	public static final String MEMBER_B = "memberB";
 	public static final String MEMBER_EX = "ex";
 
-	private MemberRepositoryV2 repository;
-	private MemberServiceV2 service;
+	private MemberRepositoryV3 repository;
+	private MemberServiceV3_1 service;
 
 	@BeforeEach
 	void before() {
 		DriverManagerDataSource dataSource = new DriverManagerDataSource(URL, USERNAME, PASSWORD);
-		repository = new MemberRepositoryV2(dataSource);
-		service = new MemberServiceV2(dataSource, repository);
+		repository = new MemberRepositoryV3(dataSource);
+
+		// JDBC용 트랜잭션 매니저 DataSourceTransactionManager 주임
+		// 데이터소스를 통해 커넥션을 생성하므로 생성자 인자 필요
+		PlatformTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
+
+		service = new MemberServiceV3_1(transactionManager, repository);
 	}
 
 	@AfterEach
@@ -56,7 +62,7 @@ public class MemberServiceV2Test {
 		// when
 		service.accountTransfer(memberA.getMemberId(), memberB.getMemberId(), 2000);
 
-		// then
+		// that
 		Member findMemberA = repository.findById(memberA.getMemberId());
 		Member findMemberB = repository.findById(memberB.getMemberId());
 
@@ -77,7 +83,7 @@ public class MemberServiceV2Test {
 		assertThatThrownBy(() -> service.accountTransfer(memberA.getMemberId(), memberEx.getMemberId(), 2000))
 				.isInstanceOf(IllegalStateException.class);
 
-		// that
+		// then
 		Member findMemberA = repository.findById(memberA.getMemberId());
 		Member findMemberB = repository.findById(memberEx.getMemberId());
 
